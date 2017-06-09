@@ -127,7 +127,7 @@ void BP1Writer::WriteProcessGroupIndex(
     }
 }
 
-void BP1Writer::Advance()
+void BP1Writer::Advance() noexcept
 {
     if (m_Profiler.IsActive)
     {
@@ -142,7 +142,8 @@ void BP1Writer::Advance()
     }
 }
 
-void BP1Writer::Close() noexcept
+void BP1Writer::Close(
+    const std::unordered_map<std::string, Attribute> &attributes) noexcept
 {
     if (m_Profiler.IsActive)
     {
@@ -153,10 +154,10 @@ void BP1Writer::Close() noexcept
     {
         if (m_MetadataSet.DataPGIsOpen)
         {
-            FlattenData();
+            FlattenData(attributes);
         }
 
-        FlattenMetadata();
+        FlattenMetadata(attributes);
         m_IsClosed = true;
     }
 
@@ -328,7 +329,8 @@ BP1Writer::GetBP1Index(const std::string name,
     return itName->second;
 }
 
-void BP1Writer::FlattenData() noexcept
+void BP1Writer::FlattenData(
+    const std::unordered_map<std::string, Attribute> &attributes) noexcept
 {
     auto &buffer = m_HeapBuffer.m_Data;
     auto &position = m_HeapBuffer.m_DataPosition;
@@ -343,6 +345,8 @@ void BP1Writer::FlattenData() noexcept
 
     // attributes (empty for now) count (4) and length (8) are zero by moving
     // positions in time step zero
+    // here have a function to write all attributes
+
     position += 12;
     m_HeapBuffer.m_DataAbsolutePosition += 12;
 
@@ -356,7 +360,8 @@ void BP1Writer::FlattenData() noexcept
     m_MetadataSet.DataPGIsOpen = false;
 }
 
-void BP1Writer::FlattenMetadata() noexcept
+void BP1Writer::FlattenMetadata(
+    const std::unordered_map<std::string, Attribute> &attributes) noexcept
 {
     auto lf_IndexCountLength =
         [](std::unordered_map<std::string, BP1Index> &indices, uint32_t &count,

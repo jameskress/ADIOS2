@@ -20,6 +20,7 @@
 #include "adios2/ADIOSConfig.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
+#include "adios2/core/Attribute.h"
 #include "adios2/core/Variable.h"
 #include "adios2/toolkit/capsule/heap/STLVector.h"
 #include "adios2/toolkit/format/bp1/BP1Base.h"
@@ -81,12 +82,16 @@ public:
     void WriteVariablePayload(const Variable<T> &variable) noexcept;
 
     /** Flattens data buffer */
-    void Advance();
+    void Advance() noexcept;
 
     /**
-     * @param isFirstClose true: first time close, false: already closed buffer
+     * Flattens data (if advance wasn't called) with attributes from IO class in
+     * the final
+     * process group, and
+     * metadata preparing the final buffer
      */
-    void Close() noexcept;
+    void Close(
+        const std::unordered_map<std::string, Attribute> &attributes) noexcept;
 
     /**
      * Get a string with profiling information for this rank
@@ -243,14 +248,17 @@ private:
      * @param metadataSet
      * @param buffer
      */
-    void FlattenData() noexcept;
+    void
+    FlattenData(const std::unordered_map<std::string, Attribute> &attributes =
+                    std::unordered_map<std::string, Attribute>()) noexcept;
 
     /**
      * Flattens the metadata indices into a single metadata buffer in capsule
      * @param metadataSet
      * @param buffer
      */
-    void FlattenMetadata() noexcept;
+    void FlattenMetadata(
+        const std::unordered_map<std::string, Attribute> &attributes) noexcept;
 };
 
 #define declare_template_instantiation(T)                                      \

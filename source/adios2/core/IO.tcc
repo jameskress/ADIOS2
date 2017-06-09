@@ -55,6 +55,22 @@ Variable<T> &IO::GetVariable(const std::string &name)
     return GetVariableMap<T>().at(GetVariableIndex(name));
 }
 
+// TODO must be specialized
+template <class T>
+void IO::DefineAttribute(const std::string &name, const T &value)
+{
+    if (m_DebugMode)
+    {
+        if (AttributeExists(name))
+        {
+            throw std::invalid_argument("ERROR: attribute " + name +
+                                        " exists in IO object " + m_Name +
+                                        ", in call to DefineAttribute\n");
+        }
+    }
+    m_Attributes.emplace(name, Attribute{GetType<T>(), std::to_string(value)});
+}
+
 // PRIVATE
 template <>
 std::map<unsigned int, Variable<char>> &IO::GetVariableMap()

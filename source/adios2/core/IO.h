@@ -14,6 +14,7 @@
 /// \cond EXCLUDE_FROM_DOXYGEN
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <utility> //std::pair
 #include <vector>
 /// \endcond
@@ -22,6 +23,7 @@
 #include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
+#include "adios2/core/Attribute.h"
 #include "adios2/core/Variable.h"
 #include "adios2/core/VariableCompound.h"
 
@@ -56,6 +58,9 @@ public:
     /** From AddTransport, parameters in map for each transport in vector */
     std::vector<Params> m_TransportsParameters;
 
+    /** Container for all attributes created with DefineAttribute */
+    std::unordered_map<std::string, Attribute> m_Attributes;
+
     /**
      * Constructor called from ADIOS factory class
      * @param name unique identifier for this IO object
@@ -74,8 +79,10 @@ public:
      */
     void SetEngine(const std::string engine);
 
-    /** Set the IO mode (collective or independent)
-     * @param IO mode */
+    /**
+     * Set the IO mode (collective or independent)
+     * @param mode
+     */
     void SetIOMode(const IOMode mode);
 
     /**
@@ -129,6 +136,9 @@ public:
     DefineVariableCompound(const std::string &name, const Dims shape = Dims{},
                            const Dims start = Dims{}, const Dims count = Dims{},
                            const bool constantShape = false);
+
+    template <class T>
+    void DefineAttribute(const std::string &name, const T &value);
 
     /**
      * Removes an existing Variable previously created with DefineVariable or
@@ -236,9 +246,6 @@ private:
     std::map<unsigned int, Variable<cldouble>> m_CLDouble;
     std::map<unsigned int, VariableCompound> m_Compound;
 
-    std::map<std::string, std::string> m_AttributesString;
-    std::map<std::string, double> m_AttributesNumeric;
-
     std::set<std::string> m_EngineNames;
 
     /**
@@ -264,7 +271,9 @@ private:
      * @param name unique variable name to be checked against existing variables
      * @return true: variable name exists, false: variable name doesn't exist
      */
-    bool VariableExists(const std::string &name) const;
+    bool VariableExists(const std::string &name) const noexcept;
+
+    bool AttributeExists(const std::string &name) const noexcept;
 };
 
 // Explicit declaration of the public template methods

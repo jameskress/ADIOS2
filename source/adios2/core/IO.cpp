@@ -266,10 +266,20 @@ unsigned int IO::GetVariableIndex(const std::string &name) const
     return itVariable->second.second;
 }
 
-bool IO::VariableExists(const std::string &name) const
+bool IO::VariableExists(const std::string &name) const noexcept
 {
     bool exists = false;
     if (m_Variables.count(name) == 1)
+    {
+        exists = true;
+    }
+    return exists;
+}
+
+bool IO::AttributeExists(const std::string &name) const noexcept
+{
+    bool exists = false;
+    if (m_Attributes.count(name) == 1)
     {
         exists = true;
     }
