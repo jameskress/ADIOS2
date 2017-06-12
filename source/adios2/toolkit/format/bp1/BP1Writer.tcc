@@ -90,7 +90,7 @@ void BP1Writer::WriteVariablePayload(const Variable<T> &variable) noexcept
     }
 }
 
-// PRIVATE
+// PRIVATE FUNCTIONS
 template <class T>
 size_t BP1Writer::GetVariableIndexSize(const Variable<T> &variable) const
     noexcept
@@ -389,6 +389,114 @@ void BP1Writer::WriteVariableCharacteristics(
     const uint32_t characteristicsLength =
         position - characteristicsCountPosition - 4 - 1;
     CopyToBuffer(buffer, backPosition, &characteristicsLength);
+}
+
+template <class T>
+void BP1Writer::WriteAttributeInData(const Attribute<T> &attribute,
+                                     Stats<T> &stats) noexcept
+{
+    auto &buffer = m_HeapBuffer.m_Data;
+    auto &position = m_HeapBuffer.m_DataPosition;
+
+    // for writing length at the end
+    const size_t attributeLengthPosition = position;
+    position += 4; // skip attribute length (4)
+
+    // CopyToBuffer(buffer, position, &memberID);
+
+    WriteNameRecord(attribute.m_Name, buffer, position);
+    position += 2; // skip path
+
+    constexpr char isVariableRelated = 'n';
+    CopyToBuffer(buffer, position, &isVariableRelated);
+
+    const int8_t dataType = GetDataType<T>();
+    // single string, only possible using vector
+    if (dataType == type_string)
+    {
+        const uint32_t dataSize =
+            static_cast<uint32_t>(attribute.m_Data->size());
+
+        if (dataSize == 1) // string string
+        {
+            CopyToBuffer(buffer, position, &dataType); // type_string
+
+            const std::string singleString(
+                reinterpret_cast<const std::string>(attribute.m_Data->front()));
+
+            const uint32_t length = singleString.length();
+            CopyToBuffer(buffer, position, &length);
+            CopyToBuffer(buffer, position, singleString.c_str(), length);
+        }
+        else if (dataSize > 1) // string array
+        {
+            const int8_t stringArrayDataType =
+                static_cast<int8_t>(type_string_array);
+            CopyToBuffer(buffer, position,
+                         &stringArrayDataType); // type_string_array
+
+            CopyToBuffer(buffer, position, &dataSize);
+
+            std::vector<std::string> stringsData =
+                *reinterpret_cast<std::vector<std::string> *>(attribute.m_Data);
+
+            for (const auto &data : stringsData)
+            {
+                const std::string singleString(
+                    reinterpret_cast<std::string>(data) + '\0');
+
+                const uint32_t length = singleString.length();
+                CopyToBuffer(buffer, position, &length);
+                CopyToBuffer(buffer, position, singleString.c_str(), length);
+            }
+        }
+    }
+    else // non-string data array
+    {
+        if (attribute.m_IsArray) // non-string
+        {
+            const uint32_t length =
+                static_cast<uint32_t>(attribute.m_Elements * sizeof(T));
+            CopyToBuffer(buffer, position, &length);
+            CopyToBuffer(buffer, position, attribute.m_ArrayData, length);
+        }
+        else
+        {
+            const uint32_t length =
+                static_cast<uint32_t>(attribute.m_Data->size() * sizeof(T));
+            CopyToBuffer(buffer, position, &length);
+            CopyToBuffer(buffer, position, attribute.m_Data->data(), length);
+        }
+    }
+
+    size_t backPosition = attributeLengthPosition;
+    // back to write length TODO check with bpdump to keep or remove 4
+    const uint32_t attributeLength = position - attributeLengthPosition - 4;
+    CopyToBuffer(buffer, backPosition, &attributeLength); // length
+    // update absolute position
+    m_HeapBuffer.m_DataAbsolutePosition = position - attributeLengthPosition;
+}
+
+template <class T>
+void BP1Writer::WriteAttributeInIndex(const Attribute<T> &attribute,
+                                      const Stats<T> &stats,
+                                      BP1Index &index) noexcept
+{
+    auto &buffer = index.Buffer;
+
+    buffer.insert(buffer.end(), 4, 0); // skip var length (4)
+    InsertToBuffer(buffer, &stats.MemberID);
+    buffer.insert(buffer.end(), 2, 0); // skip group name
+    WriteNameRecord(attribute.m_Name, buffer);
+    buffer.insert(buffer.end(), 2, 0); // skip path
+
+    const std::uint8_t dataType = GetDataType<T>();
+    InsertToBuffer(buffer, &dataType);
+
+    index.Count = 1;
+    InsertToBuffer(buffer, &index.Count);
+
+    // TODO finish characteristics in index
 }
 
 } // end namespace format

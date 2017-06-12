@@ -20,6 +20,8 @@
 
 #include "adios2/ADIOSMPI.h"
 #include "adios2/ADIOSMacros.h"
+#include "adios2/core/Attribute.h"
+#include "adios2/core/AttributeBase.h"
 
 namespace adios
 {
@@ -55,20 +57,28 @@ Variable<T> &IO::GetVariable(const std::string &name)
     return GetVariableMap<T>().at(GetVariableIndex(name));
 }
 
-// TODO must be specialized
+template <class T>
+void IO::DefineAttribute(const std::string &name, const T *arrayData,
+                         const size_t elements)
+{
+    CheckNewAttribute(name);
+    m_Attributes.emplace(
+        name, std::make_shared<Attribute<T>>(name, arrayData, elements));
+}
+
 template <class T>
 void IO::DefineAttribute(const std::string &name, const T &value)
 {
-    if (m_DebugMode)
-    {
-        if (AttributeExists(name))
-        {
-            throw std::invalid_argument("ERROR: attribute " + name +
-                                        " exists in IO object " + m_Name +
-                                        ", in call to DefineAttribute\n");
-        }
-    }
-    m_Attributes.emplace(name, Attribute{GetType<T>(), std::to_string(value)});
+    CheckNewAttribute(name);
+    std::vector<T> data = {value};
+    m_Attributes.emplace(name, std::make_shared<Attribute<T>>(name, data));
+}
+
+template <class T>
+void IO::DefineAttribute(const std::string &name, const std::vector<T> &data)
+{
+    CheckNewAttribute(name);
+    m_Attributes.emplace(name, std::make_shared<Attribute<T>>(name, data));
 }
 
 // PRIVATE

@@ -35,7 +35,7 @@ namespace format
  */
 struct BP1Index
 {
-    std::vector<char> Buffer; ///< metadata variable index, start with 100Kb
+    std::vector<char> Buffer; ///< metadata variable index, start with 100bytes
     /** number of characteristics sets (time and spatial aggregation) */
     uint64_t Count = 0;
     /** unique ID assigned to each variable for counter */
@@ -43,7 +43,7 @@ struct BP1Index
 
     BP1Index(const uint32_t memberID) : MemberID(memberID)
     {
-        Buffer.reserve(500);
+        Buffer.reserve(200);
     }
 };
 

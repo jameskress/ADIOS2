@@ -12,9 +12,7 @@
 #define ADIOS2_CORE_IO_H_
 
 /// \cond EXCLUDE_FROM_DOXYGEN
-#include <map>
 #include <string>
-#include <unordered_map>
 #include <utility> //std::pair
 #include <vector>
 /// \endcond
@@ -23,7 +21,7 @@
 #include "adios2/ADIOSMPICommOnly.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
-#include "adios2/core/Attribute.h"
+#include "adios2/core/AttributeBase.h"
 #include "adios2/core/Variable.h"
 #include "adios2/core/VariableCompound.h"
 
@@ -59,7 +57,7 @@ public:
     std::vector<Params> m_TransportsParameters;
 
     /** Container for all attributes created with DefineAttribute */
-    std::unordered_map<std::string, Attribute> m_Attributes;
+    Attributes m_Attributes;
 
     /**
      * Constructor called from ADIOS factory class
@@ -138,7 +136,14 @@ public:
                            const bool constantShape = false);
 
     template <class T>
+    void DefineAttribute(const std::string &name, const T *arrayData,
+                         const size_t elements);
+
+    template <class T>
     void DefineAttribute(const std::string &name, const T &value);
+
+    template <class T>
+    void DefineAttribute(const std::string &name, const std::vector<T> &data);
 
     /**
      * Removes an existing Variable previously created with DefineVariable or
@@ -274,6 +279,8 @@ private:
     bool VariableExists(const std::string &name) const noexcept;
 
     bool AttributeExists(const std::string &name) const noexcept;
+
+    void CheckNewAttribute(const std::string &name) const;
 };
 
 // Explicit declaration of the public template methods
@@ -284,6 +291,13 @@ private:
     extern template Variable<T> &IO::GetVariable<T>(const std::string &name);
 
 ADIOS2_FOREACH_TYPE_1ARG(declare_template_instantiation)
+#undef declare_template_instantiation
+
+#define declare_template_instantiation(T)                                      \
+    extern template void IO::DefineAttribute<T>(const std::string &name,       \
+                                                const T &value);
+
+ADIOS2_FOREACH_PRIMITIVE_TYPE_1ARG(declare_template_instantiation)
 #undef declare_template_instantiation
 
 } // end namespace adios

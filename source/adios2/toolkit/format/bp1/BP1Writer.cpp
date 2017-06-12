@@ -14,6 +14,8 @@
 #include <string>
 #include <vector>
 
+#include "adios2/helper/adiosFunctions.h" //GetType<T>
+
 namespace adios
 {
 namespace format
@@ -143,7 +145,8 @@ void BP1Writer::Advance() noexcept
 }
 
 void BP1Writer::Close(
-    const std::unordered_map<std::string, Attribute> &attributes) noexcept
+    const std::unordered_map<std::string, std::shared_ptr<AttributeBase>>
+        &attributes) noexcept
 {
     if (m_Profiler.IsActive)
     {
@@ -320,17 +323,16 @@ BP1Writer::GetBP1Index(const std::string name,
     auto itName = indices.find(name);
     if (itName == indices.end())
     {
-        indices.emplace(name, BP1Index(indices.size()));
         isNew = true;
-        return indices.at(name);
+        auto pair = indices.emplace(name, BP1Index(indices.size()));
+        return pair.first->second;
     }
 
     isNew = false;
     return itName->second;
 }
 
-void BP1Writer::FlattenData(
-    const std::unordered_map<std::string, Attribute> &attributes) noexcept
+void BP1Writer::FlattenData(const Attributes &attributes) noexcept
 {
     auto &buffer = m_HeapBuffer.m_Data;
     auto &position = m_HeapBuffer.m_DataPosition;
@@ -343,12 +345,7 @@ void BP1Writer::FlattenData(
         position - m_MetadataSet.DataPGVarsCountPosition - 8 - 4;
     CopyToBuffer(buffer, m_MetadataSet.DataPGVarsCountPosition, &varsLength);
 
-    // attributes (empty for now) count (4) and length (8) are zero by moving
-    // positions in time step zero
-    // here have a function to write all attributes
-
-    position += 12;
-    m_HeapBuffer.m_DataAbsolutePosition += 12;
+    WriteAttributes(attributes);
 
     // Finish writing pg group length
     // without record itself, 12 due to empty attributes
@@ -361,7 +358,8 @@ void BP1Writer::FlattenData(
 }
 
 void BP1Writer::FlattenMetadata(
-    const std::unordered_map<std::string, Attribute> &attributes) noexcept
+    const std::unordered_map<std::string, std::shared_ptr<AttributeBase>>
+        &attributes) noexcept
 {
     auto lf_IndexCountLength =
         [](std::unordered_map<std::string, BP1Index> &indices, uint32_t &count,
@@ -464,6 +462,52 @@ void BP1Writer::FlattenMetadata(
         m_Profiler.Bytes.emplace("buffering",
                                  m_HeapBuffer.m_DataAbsolutePosition);
     }
+}
+
+void BP1Writer::WriteAttributes(const Attributes &attributes) noexcept
+{
+    uint32_t count = 0;
+    auto &buffer = m_HeapBuffer.m_Data;
+    auto &position = m_HeapBuffer.m_DataPosition;
+
+    // will go back to write count and length
+    const size_t attributesCountPosition = position;
+    position += 12; // count and length
+
+    for (const auto &attributePair : attributes)
+    {
+        const auto &attribute = attributePair.second;
+
+        if (attribute->m_Type == GetType<void>()) // this should never happen
+        {
+        }
+#define declare_type(T)                                                        \
+    else if (attribute->m_Type == GetType<T>())                                \
+    {                                                                          \
+        Stats<T> stats;                                                        \
+        stats.MemberID = count;                                                \
+        stats.Offset = m_HeapBuffer.m_DataAbsolutePosition;                    \
+                                                                               \
+        WriteAttributeInData<T>(                                               \
+            *dynamic_pointer_cast<Attribute<T>>(attribute), stats);            \
+                                                                               \
+        auto bpIndexPair = m_MetadataSet.AttributesIndices.emplace(            \
+            attribute->m_Name, BP1Index(stats.MemberID));                      \
+                                                                               \
+        WriteAttributeInIndex<T>(                                              \
+            *dynamic_pointer_cast<Attribute<T>>(attribute), stats,             \
+            bpIndexPair.first->second);                                        \
+    }
+        ADIOS2_FOREACH_PRIMITIVE_TYPE_1ARG(declare_type)
+#undef declare_type
+
+        ++count;
+    }
+
+    size_t backPosition = attributesCountPosition;
+    CopyToBuffer(buffer, backPosition, &count); // count
+    const uint64_t attributesLength = position - attributesCountPosition - 12;
+    CopyToBuffer(buffer, backPosition, &attributesLength); // length
 }
 
 //------------------------------------------------------------------------------

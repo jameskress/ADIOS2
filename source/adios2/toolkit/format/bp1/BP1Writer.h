@@ -90,8 +90,7 @@ public:
      * process group, and
      * metadata preparing the final buffer
      */
-    void Close(
-        const std::unordered_map<std::string, Attribute> &attributes) noexcept;
+    void Close(const Attributes &attributes) noexcept;
 
     /**
      * Get a string with profiling information for this rank
@@ -244,21 +243,28 @@ private:
 
     /**
      * Flattens the data and fills the pg length, vars count, vars length and
-     * attributes
-     * @param metadataSet
-     * @param buffer
+     * (optionally) attributes
+     * @param attributes
      */
-    void
-    FlattenData(const std::unordered_map<std::string, Attribute> &attributes =
-                    std::unordered_map<std::string, Attribute>()) noexcept;
+    void FlattenData(const Attributes &attributes = Attributes()) noexcept;
 
     /**
      * Flattens the metadata indices into a single metadata buffer in capsule
      * @param metadataSet
      * @param buffer
      */
-    void FlattenMetadata(
-        const std::unordered_map<std::string, Attribute> &attributes) noexcept;
+    void FlattenMetadata(const Attributes &attributes) noexcept;
+
+    /** Write all attributes to Data buffer */
+    void WriteAttributes(const Attributes &attributes) noexcept;
+
+    template <class T>
+    void WriteAttributeInData(const Attribute<T> &attribute,
+                              Stats<T> &stats) noexcept;
+
+    template <class T>
+    void WriteAttributeInIndex(const Attribute<T> &attribute,
+                               const Stats<T> &stats, BP1Index &index) noexcept;
 };
 
 #define declare_template_instantiation(T)                                      \

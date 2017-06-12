@@ -286,6 +286,19 @@ bool IO::AttributeExists(const std::string &name) const noexcept
     return exists;
 }
 
+void IO::CheckNewAttribute(const std::string &name) const
+{
+    if (m_DebugMode)
+    {
+        if (AttributeExists(name))
+        {
+            throw std::invalid_argument("ERROR: attribute " + name +
+                                        " exists in IO object " + m_Name +
+                                        ", in call to DefineAttribute\n");
+        }
+    }
+}
+
 // Explicitly instantiate the necessary public template implementations
 #define define_template_instantiation(T)                                       \
     template Variable<T> &IO::DefineVariable<T>(                               \
@@ -294,5 +307,12 @@ bool IO::AttributeExists(const std::string &name) const noexcept
 
 ADIOS2_FOREACH_TYPE_1ARG(define_template_instantiation)
 #undef define_template_instatiation
+
+#define declare_template_instantiation(T)                                      \
+    template void IO::DefineAttribute<T>(const std::string &name,              \
+                                         const T &value);
+
+ADIOS2_FOREACH_PRIMITIVE_TYPE_1ARG(declare_template_instantiation)
+#undef declare_template_instantiation
 
 } // end namespace adios
