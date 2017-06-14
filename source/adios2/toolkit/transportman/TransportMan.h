@@ -30,13 +30,7 @@ class TransportMan
 {
 
 public:
-    /** contains all transports from IO AddTransport
-     * <pre>
-     * key : unique id from IO AddTransport
-     * value : obejct derived from Transport.h class
-     * </pre>
-     */
-    std::vector<std::shared_ptr<Transport>> m_Transports;
+    bool m_GetCollectiveMetadata = false;
 
     /**
      * Unique base constructor
@@ -47,19 +41,7 @@ public:
 
     virtual ~TransportMan() = default;
 
-    /**
-     *
-     * @param baseNames passed from Open( name )
-     * @param names actual filenames (from BP)
-     * @param openMode
-     * @param parametersVector from IO
-     * @param profile
-     */
-    void OpenFiles(const std::vector<std::string> &baseNames,
-                   const std::vector<std::string> &names,
-                   const OpenMode openMode,
-                   const std::vector<Params> &parametersVector,
-                   const bool profile);
+    void SetParameters(const std::vector<Params> &parametersVector);
 
     /**
      * Gets each transport base name from either baseName at Open or name key in
@@ -76,11 +58,25 @@ public:
                       const std::vector<Params> &parametersVector) const;
 
     /**
+     * Open transport files from IO AddTransport
+     * @param baseNames passed from Open( name )
+     * @param names actual filenames (from BP)
+     * @param openMode
+     * @param parametersVector from IO
+     * @param profile
+     */
+    void OpenFiles(const std::vector<std::string> &baseNames,
+                   const std::vector<std::string> &names,
+                   const OpenMode openMode,
+                   const std::vector<Params> &parametersVector,
+                   const bool profile);
+
+    /**
      * Checks if index is in range
      * @param index input to be checked against m_Transports range or it's -1
      * @param true: in range, false: out of range
      */
-    bool CheckTransportIndex(const int index) const noexcept;
+    void CheckTransportIndex(const int index) const;
 
     /**
      * m_Type from m_Transports based on derived classes of Transport
@@ -117,6 +113,30 @@ protected:
     MPI_Comm m_MPIComm;
     const bool m_DebugMode = false;
 
+    /** contains all transports from IO AddTransport
+         * <pre>
+         * key : unique id from IO AddTransport
+         * value : obejct derived from Transport.h class
+         * </pre>
+         */
+    std::vector<std::shared_ptr<Transport>> m_Transports;
+
+    /**
+     * Replaces what vector<bool> would have been
+     */
+    enum class CollectiveMetadata
+    {
+        On, //!< On
+        Off //!< Off (default)
+    };
+
+    /** Keep track if transport requires collective metadata */
+    std::vector<CollectiveMetadata> m_CollectiveMetadata;
+
+    /** Called from SetParameters */
+    void InitCollectiveMetadata(const Params &parameters);
+
+    /** Called from OpenFileTransports */
     void OpenFileTransport(const std::string &fileName, const OpenMode openMode,
                            const Params &parameters, const bool profile);
 };

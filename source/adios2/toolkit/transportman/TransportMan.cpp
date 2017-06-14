@@ -29,24 +29,11 @@ TransportMan::TransportMan(MPI_Comm mpiComm, const bool debugMode)
 {
 }
 
-void TransportMan::OpenFiles(const std::vector<std::string> &baseNames,
-                             const std::vector<std::string> &names,
-                             const OpenMode openMode,
-                             const std::vector<Params> &parametersVector,
-                             const bool profile)
+void TransportMan::SetParameters(const std::vector<Params> &parametersVector)
 {
-    const unsigned int size = baseNames.size();
-
-    for (unsigned int i = 0; i < size; ++i)
+    for (const auto &parameters : parametersVector)
     {
-        const Params &parameters = parametersVector[i];
-        const std::string type(parameters.at("transport"));
-
-        if (type == "File" || type == "file") // need to create directory
-        {
-            CreateDirectory(baseNames[i]);
-            OpenFileTransport(names[i], openMode, parameters, profile);
-        }
+        InitCollectiveMetadata(parameters);
     }
 }
 
@@ -90,11 +77,41 @@ std::vector<std::string> TransportMan::GetFilesBaseNames(
     return baseNames;
 }
 
-bool TransportMan::CheckTransportIndex(const int index) const noexcept
+void TransportMan::OpenFiles(const std::vector<std::string> &baseNames,
+                             const std::vector<std::string> &names,
+                             const OpenMode openMode,
+                             const std::vector<Params> &parametersVector,
+                             const bool profile)
+{
+    const unsigned int size = baseNames.size();
+
+    for (unsigned int i = 0; i < size; ++i)
+    {
+        const Params &parameters = parametersVector[i];
+        const std::string type(parameters.at("transport"));
+
+        if (type == "File" || type == "file") // need to create directory
+        {
+            CreateDirectory(baseNames[i]);
+            OpenFileTransport(names[i], openMode, parameters, profile);
+        }
+    }
+}
+
+void TransportMan::CheckTransportIndex(const int transportIndex) const
 {
     const int upperLimit = static_cast<int>(m_Transports.size());
     const int lowerLimit = -1;
-    return CheckIndexRange(index, upperLimit, lowerLimit);
+    const bool isValid =
+        CheckIndexRange(transportIndex, upperLimit, lowerLimit);
+
+    if (!isValid)
+    {
+        throw std::invalid_argument(
+            "ERROR: transport index " + std::to_string(transportIndex) +
+            " outside range, -1 (default) to " +
+            std::to_string(upperLimit - 1) + ", in call to Close\n");
+    }
 }
 
 std::vector<std::string> TransportMan::GetTransportsTypes() noexcept
@@ -197,13 +214,42 @@ bool TransportMan::AllTransportsClosed() const noexcept
 }
 
 // PRIVATE
+void TransportMan::InitCollectiveMetadata(const Params &parameters)
+{
+    auto itCollectiveMetadata = parameters.find("CollectiveMetadata");
+    if (itCollectiveMetadata == parameters.end())
+    {
+        m_CollectiveMetadata.push_back(CollectiveMetadata::On);
+    }
+    else
+    {
+        auto value = itCollectiveMetadata->second;
+        if (value == "On")
+        {
+            m_CollectiveMetadata.push_back(CollectiveMetadata::On);
+            m_GetCollectiveMetadata = true;
+        }
+        else if (value == "Off")
+        {
+            m_CollectiveMetadata.push_back(CollectiveMetadata::Off);
+        }
+        else
+        {
+            throw std::invalid_argument(
+                "ERROR: only CollectiveMetadata=On or "
+                "CollectiveMetadata=Off are valid "
+                "IO AddTransport parameters, in call to Open\n");
+        }
+    }
+}
+
 void TransportMan::OpenFileTransport(const std::string &fileName,
                                      const OpenMode openMode,
                                      const Params &parameters,
                                      const bool profile)
 {
-    auto lf_SetFileTransport = [&](const std::string library,
-                                   std::shared_ptr<Transport> &transport) {
+    auto lf_SetFileTransport = [this](const std::string library,
+                                      std::shared_ptr<Transport> &transport) {
         if (library == "POSIX")
         {
             transport = std::make_shared<transport::FileDescriptor>(
@@ -238,8 +284,8 @@ void TransportMan::OpenFileTransport(const std::string &fileName,
         return library;
     };
 
-    auto lf_GetTimeUnits = [&](const std::string defaultTimeUnit,
-                               const Params &parameters) -> TimeUnit {
+    auto lf_GetTimeUnits = [this](const std::string defaultTimeUnit,
+                                  const Params &parameters) -> TimeUnit {
 
         std::string profileUnits(defaultTimeUnit);
         SetParameterValue("ProfileUnits", parameters, profileUnits);

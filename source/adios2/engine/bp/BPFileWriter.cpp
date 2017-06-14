@@ -58,54 +58,27 @@ void BPFileWriter::Close(const int transportIndex)
 {
     if (m_DebugMode)
     {
-        if (!m_TransportsManager.CheckTransportIndex(transportIndex))
-        {
-            auto transportsSize = m_TransportsManager.m_Transports.size();
-            throw std::invalid_argument(
-                "ERROR: transport index " + std::to_string(transportIndex) +
-                " outside range, -1 (default) to " +
-                std::to_string(transportsSize - 1) + ", in call to Close\n");
-        }
+        m_TransportsManager.CheckTransportIndex(transportIndex);
     }
 
     // close bp buffer by flattening data and metadata
-    m_BP1Writer.Close();
-    // send data to corresponding transports
+    m_BP1Writer.FlattenBuffer();
+    // send flattened buffer data to corresponding transports
     m_TransportsManager.WriteFiles(m_BP1Writer.m_HeapBuffer.GetData(),
                                    m_BP1Writer.m_HeapBuffer.m_DataPosition,
                                    transportIndex);
 
-    // close them
     m_TransportsManager.CloseFiles(transportIndex);
 
-    if (m_BP1Writer.m_Profiler.IsActive)
+    if (m_BP1Writer.m_Profiler.IsActive &&
+        m_TransportsManager.AllTransportsClosed())
     {
-        // aggregate and write profiling.log
-        if (m_TransportsManager.AllTransportsClosed())
-        {
-            auto transportTypes = m_TransportsManager.GetTransportsTypes();
-            auto transportProfilers =
-                m_TransportsManager.GetTransportsProfilers();
+        CloseProfiling();
+    }
 
-            const std::string log(m_BP1Writer.GetRankProfilingLog(
-                transportTypes, transportProfilers));
-            // TODO profiling.log from rank0
-
-            const std::string profilingLog(
-                m_BP1Writer.AggregateProfilingLog(log));
-
-            if (m_BP1Writer.m_BP1Aggregator.m_RankMPI == 0)
-            {
-                transport::FileStream profilingLogStream(m_MPIComm,
-                                                         m_DebugMode);
-                auto bpBaseNames = m_BP1Writer.GetBPBaseNames({m_Name});
-                profilingLogStream.Open(bpBaseNames[0] + "/profiling.log",
-                                        OpenMode::Write);
-                profilingLogStream.Write(profilingLog.c_str(),
-                                         profilingLog.size());
-                profilingLogStream.Close();
-            }
-        }
+    if (m_TransportsManager.m_GetCollectiveMetadata)
+    {
+        CloseCollectiveMetadata();
     }
 }
 
@@ -125,11 +98,13 @@ void BPFileWriter::InitTransports()
         m_IO.m_TransportsParameters.push_back(defaultTransportParameters);
     }
 
-    // Names are std::vector<std::string>
+    // Set additional parameters
+
+    // Form bp names
     auto transportsNames = m_TransportsManager.GetFilesBaseNames(
         m_Name, m_IO.m_TransportsParameters);
     auto bpBaseNames = m_BP1Writer.GetBPBaseNames(transportsNames);
-    auto bpNames = m_BP1Writer.GetBPNames(bpBaseNames);
+    auto bpNames = m_BP1Writer.GetBPNames(transportsNames);
 
     m_TransportsManager.OpenFiles(bpBaseNames, bpNames, m_OpenMode,
                                   m_IO.m_TransportsParameters,
@@ -149,6 +124,34 @@ void BPFileWriter::InitBPBuffer()
         m_BP1Writer.WriteProcessGroupIndex(
             m_IO.m_HostLanguage, m_TransportsManager.GetTransportsTypes());
     }
+}
+
+void BPFileWriter::CloseProfiling() noexcept
+{
+    auto transportTypes = m_TransportsManager.GetTransportsTypes();
+    auto transportProfilers = m_TransportsManager.GetTransportsProfilers();
+
+    const std::string log(
+        m_BP1Writer.GetRankProfilingLog(transportTypes, transportProfilers));
+
+    const std::string profilingLog(m_BP1Writer.AggregateProfilingLog(log));
+
+    if (m_BP1Writer.m_BP1Aggregator.m_RankMPI == 0)
+    {
+        transport::FileStream profilingLogStream(m_MPIComm, m_DebugMode);
+        auto bpBaseNames = m_BP1Writer.GetBPBaseNames({m_Name});
+        profilingLogStream.Open(bpBaseNames[0] + "/profiling.log",
+                                OpenMode::Write);
+        profilingLogStream.Write(profilingLog.c_str(), profilingLog.size());
+        profilingLogStream.Close();
+    }
+}
+
+/** Called from Close, adds global metadata to transports */
+void BPFileWriter::CloseCollectiveMetadata() noexcept
+{
+    m_BP1Writer.SetCollectiveMetadata();
+    // send Collective Metadata to transports
 }
 
 } // end namespace adios

@@ -168,6 +168,8 @@ void BP1Writer::WriteVariableMetadataInIndex(
         }
     }
 
+    // capture current position as offset to this characteristic index
+    index.Offsets.push_back(buffer.size());
     WriteVariableCharacteristics(variable, stats, buffer);
 }
 
@@ -228,7 +230,7 @@ void BP1Writer::WriteCharacteristicRecord(const std::uint8_t characteristicID,
                                           const T &value,
                                           std::vector<char> &buffer) noexcept
 {
-    const std::uint8_t id = characteristicID;
+    const uint8_t id = characteristicID;
     InsertToBuffer(buffer, &id);
     InsertToBuffer(buffer, &value);
     ++characteristicsCounter;
@@ -241,7 +243,7 @@ void BP1Writer::WriteCharacteristicRecord(const uint8_t characteristicID,
                                           std::vector<char> &buffer,
                                           size_t &position) noexcept
 {
-    const std::uint8_t id = characteristicID;
+    const uint8_t id = characteristicID;
     CopyToBuffer(buffer, position, &id);
     CopyToBuffer(buffer, position, &value);
     ++characteristicsCounter;
@@ -275,6 +277,10 @@ void BP1Writer::WriteVariableCharacteristics(
 
     WriteCharacteristicRecord(characteristic_time_index, characteristicsCounter,
                               stats.TimeIndex, buffer);
+
+    WriteCharacteristicRecord(characteristic_file_index, characteristicsCounter,
+                              static_cast<uint32_t>(m_BP1Aggregator.m_RankMPI),
+                              buffer);
 
     WriteCharacteristicRecord(characteristic_offset, characteristicsCounter,
                               stats.Offset, buffer);

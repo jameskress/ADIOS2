@@ -35,15 +35,22 @@ namespace format
  */
 struct BP1Index
 {
-    std::vector<char> Buffer; ///< metadata variable index, start with 100Kb
+    /** buffer containing the metadata index, start with 200Kb */
+    std::vector<char> Buffer;
+
+    /** offset for each merged index or set count. Used to separate, sort and
+     * merge at the aggregator level*/
+    std::vector<size_t> Offsets;
+
     /** number of characteristics sets (time and spatial aggregation) */
     uint64_t Count = 0;
+
     /** unique ID assigned to each variable for counter */
     const uint32_t MemberID;
 
     BP1Index(const uint32_t memberID) : MemberID(memberID)
     {
-        Buffer.reserve(500);
+        Buffer.reserve(200);
     }
 };
 

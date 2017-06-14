@@ -87,9 +87,11 @@ public:
     void SetParameters(const std::vector<std::string> &parametersVector);
 
     /**
-     * Version that passes a map to fill out parameters
-     * initializer list = { "param1", "value1" },  {"param2", "value2"},
-     * @param params adios::Params std::map<std::string, std::string>
+     * Version that passes a map<string,string> to fill out parameters
+     * Typically used with initializer lists = { { "param1", "value1" },
+     * {"param2", "value2"} }
+     * @param params alias to std::map<std::string, std::string> containing
+     * parameters
      */
     void SetParameters(const Params &parameters = Params());
 
@@ -98,10 +100,18 @@ public:
      * @param type must be a supported transport type under /include/transport
      * @param args list of parameters for a transport with format
      * "parameter1=value1", ..., "parameterN=valueN"
+     * @return transportIndex that can be used as an argument to Close
      */
     unsigned int AddTransport(const std::string type,
                               const std::vector<std::string> &paramsVector);
 
+    /**
+     * Version that passes a map<string,string> to fill out parameters
+     * @param type
+     * @param params alias to std::map<std::string, std::string> containing
+     * transport specific parameters
+     * @return transportIndex that can be used as an argument to Close
+     */
     unsigned int AddTransport(const std::string type,
                               const Params &params = Params());
 

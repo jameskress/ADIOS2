@@ -76,7 +76,13 @@ private:
      * @param values
      */
     template <class T>
-    void DoWriteCommon(Variable<T> &variable, const T *values);
+    void DoWriteCommon(Variable<T> &variable, const T *values) noexcept;
+
+    /** Called from Close, adds profiling.log to transports */
+    void CloseProfiling() noexcept;
+
+    /** Called from Close, adds collective metadata to transports */
+    void CloseCollectiveMetadata() noexcept;
 };
 
 } // end namespace adios

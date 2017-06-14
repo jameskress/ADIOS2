@@ -155,6 +155,7 @@ constexpr float DefaultBufferGrowthFactor(2.);
 // adios alias values and types
 constexpr bool DebugON = true;
 constexpr bool DebugOFF = false;
+constexpr size_t UndefinedSize = std::numeric_limits<size_t>::max() - 1;
 constexpr size_t UnknownDim = 0;
 constexpr size_t JoinedDim = std::numeric_limits<size_t>::max() - 1;
 constexpr size_t LocalValueDim = std::numeric_limits<size_t>::max() - 2;

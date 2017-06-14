@@ -13,6 +13,10 @@
 
 #include "BP1Base.h"
 
+#include <cmath> //std::min
+
+#include "adios2/helper/adiosFunctions.h"
+
 namespace adios
 {
 namespace format

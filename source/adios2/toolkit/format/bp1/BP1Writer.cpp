@@ -33,10 +33,12 @@ void BP1Writer::WriteProcessGroupIndex(
         m_Profiler.Timers.at("buffering").Resume();
     }
 
-    std::vector<char> &metadataBuffer = m_MetadataSet.PGIndex.Buffer;
+    auto &metadataBuffer = m_MetadataSet.PGIndex.Buffer;
+    // capture current position in offsets for current PGIndex
+    m_MetadataSet.PGIndex.Offsets.push_back(metadataBuffer.size());
 
-    std::vector<char> &dataBuffer = m_HeapBuffer.m_Data;
-    size_t &dataPosition = m_HeapBuffer.m_DataPosition;
+    auto &dataBuffer = m_HeapBuffer.m_Data;
+    auto &dataPosition = m_HeapBuffer.m_DataPosition;
 
     m_MetadataSet.DataPGLengthPosition = dataPosition;
     dataPosition += 8; // skip pg length (8)
@@ -146,7 +148,7 @@ void BP1Writer::Flush()
     }
 }
 
-void BP1Writer::Close() noexcept
+void BP1Writer::FlattenBuffer() noexcept
 {
     if (m_Profiler.IsActive)
     {
@@ -171,6 +173,31 @@ void BP1Writer::Close() noexcept
     {
         m_Profiler.Timers.at("buffering").Pause();
     }
+}
+
+void BP1Writer::SetCollectiveMetadata() noexcept
+{
+    if (m_IsMetadataCollected)
+    {
+        return;
+    }
+
+    if (m_Profiler.IsActive)
+    {
+        m_Profiler.Timers.at("buffering").Resume();
+    }
+
+    SetCollectivePGIndex();
+    SetCollectiveVariablesIndex();
+    SetCollectiveAttributesIndex();
+    SetCollectiveFooter();
+
+    if (m_Profiler.IsActive)
+    {
+        m_Profiler.Timers.at("buffering").Pause();
+    }
+
+    m_IsMetadataCollected = true;
 }
 
 std::string BP1Writer::GetRankProfilingLog(
@@ -471,6 +498,12 @@ void BP1Writer::FlattenMetadata() noexcept
                                  m_HeapBuffer.m_DataAbsolutePosition);
     }
 }
+
+void BP1Writer::SetCollectivePGIndex() noexcept {}
+
+void BP1Writer::SetCollectiveVariablesIndex() noexcept {}
+void BP1Writer::SetCollectiveAttributesIndex() noexcept {}
+void BP1Writer::SetCollectiveFooter() noexcept {}
 
 //------------------------------------------------------------------------------
 // Explicit instantiation of only public templates

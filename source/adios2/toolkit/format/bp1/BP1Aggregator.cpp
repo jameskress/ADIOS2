@@ -33,7 +33,8 @@ BP1Aggregator::BP1Aggregator(MPI_Comm mpiComm, const bool debugMode)
     MPI_Comm_size(m_MPIComm, &m_SizeMPI);
 }
 
-std::string BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog)
+std::string
+BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog) const
 {
     std::string profilingLog;
 
@@ -52,6 +53,7 @@ std::string BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog)
                       &requests[i]);
         }
 
+        // wait for each size and allocate
         for (unsigned int i = 1; i < sizeMPI; ++i)
         {
             MPI_Wait(&requests[i], &statuses[i]);
@@ -63,7 +65,7 @@ std::string BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog)
                         std::to_string(i) +
                         ", in ADIOS aggregator for Profiling.log\n");
             }
-            rankLogs[i - 1].resize(rankLogsSizes[i - 1]); // allocate with zeros
+            rankLogs[i - 1].resize(rankLogsSizes[i - 1]);
         }
 
         // receive rankLog from other ranks
@@ -73,9 +75,11 @@ std::string BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog)
                       1, m_MPIComm, &requests[i]);
         }
 
+        // wait for all messages to arrive
         for (unsigned int i = 1; i < sizeMPI; ++i)
         {
             MPI_Wait(&requests[i], &statuses[i]);
+            // needs runtime exception checks
         }
 
         // write global string
@@ -97,21 +101,6 @@ std::string BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog)
         profilingLog.pop_back(); // eliminate trailing comma
         profilingLog += "\n";
         profilingLog += "}\n";
-
-        //        // write to file
-        //        std::ofstream logStream(fileName);
-        //        if (m_DebugMode)
-        //        {
-        //            if (!logStream)
-        //            {
-        //                throw std::ios_base::failure(
-        //                    "ERROR: couldn't open profiling file " + fileName
-        //                    + "\n");
-        //            }
-        //        }
-        //
-        //        logStream.write(logFile.c_str(), logFile.size());
-        //        logStream.close();
     }
     else
     {
@@ -127,6 +116,71 @@ std::string BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog)
     MPI_Barrier(m_MPIComm); // Barrier here?
 
     return profilingLog;
+}
+
+void BP1Aggregator::SetCollectivePGIndex(const BP1Index &pgIndex,
+                                         capsule::STLVector &heapBuffer) const
+{
+    if (m_RankMPI == 0)
+    {
+        // first send total buffer sizes
+        const unsigned int sizeMPI = static_cast<const unsigned int>(m_SizeMPI);
+        const unsigned int senders = sizeMPI - 1;
+
+        // Pair of size_t */
+        std::vector<size_t> pgIndexSizes(2 * senders, UndefinedSize);
+
+        std::vector<std::vector<char>> pgBuffers(senders);
+        std::vector<std::vector<size_t>> pgOffsets(senders);
+
+        // half for index Buffer, half for index Offsets
+        std::vector<MPI_Request> requests(senders);
+        std::vector<MPI_Status> statuses(senders);
+
+        // first receive sizes of indices and offsets
+        for (unsigned int s = 0; s < senders; ++s)
+        {
+            MPI_Irecv(&pgIndexSizes[2 * s], 2, ADIOS2_MPI_SIZE_T, s + 1, 0,
+                      m_MPIComm, &requests[s]);
+        }
+
+        // wait for each size and allocate
+        for (unsigned int s = 0; s < senders; ++s)
+        {
+            MPI_Wait(&requests[s], &statuses[s]);
+            const size_t bufferSize = pgIndexSizes[2 * s];
+            const size_t offsetsSize = pgIndexSizes[2 * s + 1];
+            if (m_DebugMode)
+            {
+                CheckSize(bufferSize, s + 1, 0, "for pgBuffer");
+                CheckSize(offsetsSize, s + 1, 0, "for pgOffset");
+            }
+            pgBuffers[s].resize(bufferSize);
+            pgOffsets[s].resize(offsetsSize);
+        }
+    }
+    else
+    {
+        const std::vector<size_t> pgSizes = {pgIndex.Buffer.size(),
+                                             pgIndex.Offsets.size()};
+        MPI_Request sizesRequest;
+        MPI_Isend(pgSizes.data(), 2, ADIOS2_MPI_SIZE_T, 0, 1, m_MPIComm,
+                  &sizesRequest);
+    }
+}
+
+// PRIVATE
+void BP1Aggregator::CheckSize(const size_t size, const int rankSource,
+                              const int rankDestination,
+                              const std::string hint) const
+{
+    if (size == UndefinedSize)
+    {
+        throw std::runtime_error(
+            "ERROR: BP1 Aggregator rank " + std::to_string(rankDestination) +
+            " couldn't receive size from rank " + std::to_string(rankSource) +
+            " " + hint + ",  in call to Close \n");
+    }
 }
 
 } // end namespace format

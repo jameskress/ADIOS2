@@ -16,7 +16,8 @@ namespace adios
 {
 
 template <class T>
-void BPFileWriter::DoWriteCommon(Variable<T> &variable, const T *values)
+void BPFileWriter::DoWriteCommon(Variable<T> &variable,
+                                 const T *values) noexcept
 {
     // set variable
     variable.m_AppValues = values;

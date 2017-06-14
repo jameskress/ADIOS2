@@ -17,6 +17,8 @@
 
 #include "adios2/ADIOSConfig.h"
 #include "adios2/ADIOSMPICommOnly.h"
+#include "adios2/toolkit/capsule/heap/STLVector.h"
+#include "adios2/toolkit/format/bp1/BP1Structs.h"
 
 namespace adios
 {
@@ -46,10 +48,22 @@ public:
      * python dictionary format
      * @param rankLog contain rank profiling info to be aggregated
      */
-    std::string GetGlobalProfilingLog(const std::string &rankLog);
+    std::string GetGlobalProfilingLog(const std::string &rankLog) const;
+
+    void SetCollectivePGIndex(const BP1Index &pgIndex,
+                              capsule::STLVector &heapBuffer) const;
+
+    void SetCollectiveVariableIndex(const BP1Index &pgIndex,
+                                    capsule::STLVector &heapBuffer) const;
+
+    void SetCollectiveAttributeIndex(const BP1Index &pgIndex,
+                                     capsule::STLVector &heapBuffer) const;
 
 private:
     const bool m_DebugMode = false;
+
+    void CheckSize(const size_t size, const int rankSource,
+                   const int rankDestination, const std::string hint) const;
 };
 
 } // end namespace format

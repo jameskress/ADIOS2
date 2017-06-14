@@ -34,6 +34,8 @@ class BP1Writer : public BP1Base
 {
 
 public:
+    bool m_IsMetadataCollected = false;
+
     /**
      * Unique constructor
      * @param mpiComm MPI communicator for BP1 Aggregator
@@ -78,7 +80,12 @@ public:
     /**
      * @param isFirstClose true: first time close, false: already closed buffer
      */
-    void Close() noexcept;
+    void FlattenBuffer() noexcept;
+
+    /**
+     * Creates a collective metadata buffer in STLVector capsule m_HeapBuffer
+     */
+    void SetCollectiveMetadata() noexcept;
 
     /**
      * Get a string with profiling information for this rank
@@ -227,6 +234,12 @@ private:
      * @param buffer
      */
     void FlattenMetadata() noexcept;
+
+    // Collective operations
+    void SetCollectivePGIndex() noexcept;
+    void SetCollectiveVariablesIndex() noexcept;
+    void SetCollectiveAttributesIndex() noexcept;
+    void SetCollectiveFooter() noexcept;
 };
 
 #define declare_template_instantiation(T)                                      \
