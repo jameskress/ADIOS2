@@ -50,20 +50,46 @@ public:
      */
     std::string GetGlobalProfilingLog(const std::string &rankLog) const;
 
-    void SetCollectivePGIndex(const BP1Index &pgIndex,
-                              capsule::STLVector &heapBuffer) const;
-
-    void SetCollectiveVariableIndex(const BP1Index &pgIndex,
-                                    capsule::STLVector &heapBuffer) const;
-
-    void SetCollectiveAttributeIndex(const BP1Index &pgIndex,
-                                     capsule::STLVector &heapBuffer) const;
+    void SetCollectiveBP1Index(const BP1MetadataSet &metadataSet,
+                               capsule::STLVector &heapBuffer) const;
 
 private:
     const bool m_DebugMode = false;
 
-    void CheckSize(const size_t size, const int rankSource,
-                   const int rankDestination, const std::string hint) const;
+    /**
+     * Checks an MPI received size using size_t
+     * @param size to be checked
+     * @param rankSource used to improve exception message
+     * @param rankDestination used to improve exception message
+     * @param hint used to improve exception message
+     */
+    void CheckReceivedSize(const size_t size, const int rankSource,
+                           const int rankDestination,
+                           const std::string hint) const;
+
+    /**
+     * Gather indices from all sender ranks to rank zero (not included).
+     * @param indexName used for debugging purposes
+     * @param bpIndex sender: sends BPIndex1.Buffer and BPIndex1.Offsets
+     * @param buffers receiver: from BPIndex1.Buffer from every sender
+     * @param offsets receiver: from BPIndex1.Offsets from every sender
+     */
+    void GatherBP1Index(const std::string indexName, const BP1Index &bpIndex,
+                        std::vector<std::vector<char>> &buffers,
+                        std::vector<std::vector<size_t>> &offsets) const;
+
+    /**
+     * Only used by rank 0, sorts and flattens a single bp1Index
+     * @param indexName  used for debugging purposes
+     * @param bpIndex local rank0 bpIndex
+     * @param buffers MPI received bpIndex buffers
+     * @param offsets MPI received bpIndex offsets
+     * @param heapBuffer
+     */
+    void FlattenBP1Index(const std::string indexName, const BP1Index &bpIndex,
+                         std::vector<std::vector<char>> &buffers,
+                         std::vector<std::vector<size_t>> &offsets,
+                         capsule::STLVector &heapBuffer) const;
 };
 
 } // end namespace format

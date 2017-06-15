@@ -13,7 +13,7 @@
 /// \cond EXCLUDE_FROM_DOXYGEN
 #include <fstream>
 #include <ios>
-#include <stdexcept>
+#include <stdexcept> //std::runtime_error
 #include <vector>
 /// \endcond
 
@@ -118,61 +118,117 @@ BP1Aggregator::GetGlobalProfilingLog(const std::string &rankLog) const
     return profilingLog;
 }
 
-void BP1Aggregator::SetCollectivePGIndex(const BP1Index &pgIndex,
-                                         capsule::STLVector &heapBuffer) const
+void BP1Aggregator::SetCollectiveBP1Index(const BP1MetadataSet &metadataSet,
+                                          capsule::STLVector &heapBuffer) const
 {
+    std::vector<std::vector<char>> &buffers;
+    std::vector<std::vector<size_t>> &offsets;
+    GatherBP1Index("pgIndex", metadataSet.PGIndex, buffers, offsets);
+
     if (m_RankMPI == 0)
     {
-        // first send total buffer sizes
-        const unsigned int sizeMPI = static_cast<const unsigned int>(m_SizeMPI);
-        const unsigned int senders = sizeMPI - 1;
-
-        // Pair of size_t */
-        std::vector<size_t> pgIndexSizes(2 * senders, UndefinedSize);
-
-        std::vector<std::vector<char>> pgBuffers(senders);
-        std::vector<std::vector<size_t>> pgOffsets(senders);
-
-        // half for index Buffer, half for index Offsets
-        std::vector<MPI_Request> requests(senders);
-        std::vector<MPI_Status> statuses(senders);
-
-        // first receive sizes of indices and offsets
-        for (unsigned int s = 0; s < senders; ++s)
-        {
-            MPI_Irecv(&pgIndexSizes[2 * s], 2, ADIOS2_MPI_SIZE_T, s + 1, 0,
-                      m_MPIComm, &requests[s]);
-        }
-
-        // wait for each size and allocate
-        for (unsigned int s = 0; s < senders; ++s)
-        {
-            MPI_Wait(&requests[s], &statuses[s]);
-            const size_t bufferSize = pgIndexSizes[2 * s];
-            const size_t offsetsSize = pgIndexSizes[2 * s + 1];
-            if (m_DebugMode)
-            {
-                CheckSize(bufferSize, s + 1, 0, "for pgBuffer");
-                CheckSize(offsetsSize, s + 1, 0, "for pgOffset");
-            }
-            pgBuffers[s].resize(bufferSize);
-            pgOffsets[s].resize(offsetsSize);
-        }
+        FlattenBP1Index("pgIndex", metadataSet.PGIndex, buffers, offsets,
+                        heapBuffer);
     }
-    else
+
+    for (const auto &variableIndexPair : metadataSet.VarsIndices)
     {
-        const std::vector<size_t> pgSizes = {pgIndex.Buffer.size(),
-                                             pgIndex.Offsets.size()};
-        MPI_Request sizesRequest;
-        MPI_Isend(pgSizes.data(), 2, ADIOS2_MPI_SIZE_T, 0, 1, m_MPIComm,
-                  &sizesRequest);
+        const std::string variableName = variableIndexPair.first;
+        FlattenBP1Index("variable ", metadataSet.PGIndex, buffers, offsets,
+                        heapBuffer);
     }
 }
 
 // PRIVATE
-void BP1Aggregator::CheckSize(const size_t size, const int rankSource,
-                              const int rankDestination,
-                              const std::string hint) const
+void BP1Aggregator::GatherBP1Index(
+    const std::string indexName, const BP1Index &bpIndex,
+    std::vector<std::vector<char>> &buffers,
+    std::vector<std::vector<size_t>> &offsets) const
+{
+    if (m_RankMPI == 0)
+    {
+        const unsigned int senders =
+            static_cast<const unsigned int>(m_SizeMPI - 1);
+
+        buffers.clear();
+        offsets.clear();
+
+        buffers.resize(senders);
+        offsets.resize(senders);
+
+        // half for index Buffer, half for index Offsets
+        std::vector<size_t> indexSizes(2 * senders, UndefinedSize);
+        std::vector<MPI_Request> requests(2 * senders);
+        std::vector<MPI_Status> statuses(2 * senders);
+
+        int tag = 0;
+        // first receive sizes of indices and offsets, each sender will issue a
+        // pair
+        for (unsigned int s = 0; s < senders; ++s)
+        {
+            MPI_Irecv(&indexSizes[2 * s], 2, ADIOS2_MPI_SIZE_T, s + 1, tag++,
+                      m_MPIComm, &requests[s]);
+        }
+
+        // wait for each size, check and allocate
+        for (unsigned int s = 0; s < senders; ++s)
+        {
+            MPI_Wait(&requests[s], &statuses[s]);
+            const size_t bufferSize = indexSizes[2 * s];
+            const size_t offsetsSize = indexSizes[2 * s + 1];
+            if (m_DebugMode)
+            {
+                CheckReceivedSize(bufferSize, s + 1, 0,
+                                  "for " + indexName + " Buffer");
+                CheckReceivedSize(offsetsSize, s + 1, 0,
+                                  "for " + indexName + " Offsets");
+            }
+            buffers[s].resize(bufferSize);
+            offsets[s].resize(offsetsSize);
+        }
+
+        // now receive buffer and offsets contents
+        for (unsigned int s = 0; s < senders; ++s)
+        {
+            MPI_Irecv(buffers[s].data(), indexSizes[2 * s], MPI_CHAR, s + 1,
+                      tag++, m_MPIComm, &requests[2 * s]);
+            MPI_Irecv(offsets[s].data(), indexSizes[2 * s + 1],
+                      ADIOS2_MPI_SIZE_T, s + 1, tag++, m_MPIComm,
+                      &requests[2 * s + 1]);
+        }
+
+        // wait for all messages to arrive
+        for (unsigned int s = 0; s < senders; ++s)
+        {
+            MPI_Wait(&requests[2 * s], &statuses[2 * s]);
+            MPI_Wait(&requests[2 * s + 1], &statuses[2 * s + 1]);
+            // needs runtime exception checks
+        }
+    }
+    else
+    {
+        const std::vector<size_t> indexSizes = {bpIndex.Buffer.size(),
+                                                bpIndex.Offsets.size()};
+        int tag = 0;
+        MPI_Request sizesRequest;
+        MPI_Isend(indexSizes.data(), 2, ADIOS2_MPI_SIZE_T, 0, tag++, m_MPIComm,
+                  &sizesRequest);
+
+        MPI_Request buffersRequest;
+        const int bufferCount = static_cast<int>(bpIndex.Buffer.size());
+        MPI_Isend(bpIndex.Buffer.data(), bufferCount, MPI_CHAR, 0, tag++,
+                  m_MPIComm, &buffersRequest);
+
+        MPI_Request offsetsRequest;
+        const int offsetsCount = static_cast<int>(bpIndex.Offsets.size());
+        MPI_Isend(bpIndex.Offsets.data(), offsetsCount, ADIOS2_MPI_SIZE_T, 0,
+                  tag++, m_MPIComm, &offsetsRequest);
+    }
+}
+
+void BP1Aggregator::CheckReceivedSize(const size_t size, const int rankSource,
+                                      const int rankDestination,
+                                      const std::string hint) const
 {
     if (size == UndefinedSize)
     {
@@ -181,6 +237,14 @@ void BP1Aggregator::CheckSize(const size_t size, const int rankSource,
             " couldn't receive size from rank " + std::to_string(rankSource) +
             " " + hint + ",  in call to Close \n");
     }
+}
+
+void BP1Aggregator::FlattenBP1Index(const std::string indexName,
+                                    const BP1Index &bpIndex,
+                                    std::vector<std::vector<char>> &buffers,
+                                    std::vector<std::vector<size_t>> &offsets,
+                                    capsule::STLVector &heapBuffer) const
+{
 }
 
 } // end namespace format
