@@ -20,6 +20,8 @@
 #include "adios2/ADIOSConfig.h"
 #include "adios2/ADIOSMacros.h"
 #include "adios2/ADIOSTypes.h"
+#include "adios2/core/Attribute.h"
+#include "adios2/core/IO.h"
 #include "adios2/core/Variable.h"
 #include "adios2/toolkit/capsule/heap/STLVector.h"
 #include "adios2/toolkit/format/bp1/BP1Base.h"
@@ -41,7 +43,7 @@ public:
      */
     BP1Writer(MPI_Comm mpiComm, const bool debugMode = false);
 
-    virtual ~BP1Writer() = default;
+    ~BP1Writer() = default;
 
     /**
      * Writes a process group index PGIndex and list of methods (from
@@ -52,6 +54,12 @@ public:
     void WriteProcessGroupIndex(
         const std::string hostLanguage,
         const std::vector<std::string> &transportsTypes) noexcept;
+
+    /**
+     * Writes in BP buffer all attributes defined in an IO object
+     * @param io input containing attributes
+     */
+    void WriteAttributes(IO &io);
 
     /**
      * Write metadata for a given variable
@@ -101,6 +109,24 @@ public:
 private:
     /** BP format version */
     const uint8_t m_Version = 3;
+
+    /**
+     * Write a single attribute in data buffer, called from WriteAttributes
+     * @param attribute
+     * @param stats
+     */
+    template <class T>
+    void WriteAttributeInData(const Attribute<T> &attribute,
+                              Stats<T> &stats) noexcept;
+
+    /**
+     *
+     * @param attribute
+     * @param stats
+     */
+    template <class T>
+    void WriteAttributeInIndex(const Attribute<T> &attribute,
+                               const Stats<T> &stats) noexcept;
 
     /**
      * Get variable statistics

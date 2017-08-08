@@ -72,6 +72,99 @@ void BP1Writer::WriteVariablePayload(const Variable<T> &variable) noexcept
 
 // PRIVATE
 template <class T>
+void BP1Writer::WriteAttributeInData(const Attribute<T> &attribute,
+                                     Stats<T> &stats) noexcept
+{
+    auto &buffer = m_HeapBuffer.m_Data;
+    auto &position = m_HeapBuffer.m_DataPosition;
+
+    // will go back to write length
+    const size_t attributeLengthPosition = position;
+    position += 4; // skip length
+
+    CopyToBuffer(buffer, position, &stats.MemberID);
+    WriteNameRecord(attribute.m_Name, buffer, position);
+    position += 2; // skip path
+
+    // TODO: attribute from Variable??
+    constexpr int8_t no = 'n';
+    CopyToBuffer(buffer, position, &no); // not associated with a Variable
+
+    uint8_t dataType = GetDataType<T>();
+    // check if it's a single string or an array of strings
+    if (dataType == type_string && attribute.m_DataArray != nullptr)
+    {
+        dataType = type_string_array;
+    }
+
+    CopyToBuffer(buffer, position, &dataType);
+
+    // here record payload offset
+    stats.PayloadOffset = m_HeapBuffer.m_DataAbsolutePosition + position -
+                          attributeLengthPosition;
+
+    if (dataType == type_string)
+    {
+        const std::string dataString =
+            reinterpret_cast<const std::string>(attribute.m_DataValue);
+        const uint32_t dataSize =
+            static_cast<const uint32_t>(dataString.size());
+
+        CopyToBuffer(buffer, position, &dataSize);
+        CopyToBuffer(buffer, position, dataString.c_str(), dataString.size());
+    }
+    else if (dataType == type_string_array)
+    {
+        const uint32_t elements =
+            static_cast<const uint32_t>(attribute.m_Elements);
+        CopyToBuffer(buffer, position, &elements);
+
+        for (size_t s = 0; s < attribute.m_Elements; ++s)
+        {
+            const std::string element =
+                reinterpret_cast<const std::string>(attribute.m_DataArray[s]);
+
+            // include zero terminated
+            const uint32_t elementSize =
+                static_cast<const uint32_t>(element.size() + 1);
+
+            CopyToBuffer(buffer, position, &elementSize);
+            CopyToBuffer(buffer, position, element.c_str(), element.size());
+        }
+    }
+    else
+    {
+        const uint32_t dataSize = attribute.m_Elements * sizeof(T);
+        CopyToBuffer(buffer, position, &dataSize);
+
+        if (attribute.m_DataArray != nullptr)
+        {
+            CopyToBuffer(buffer, position, attribute.m_DataArray,
+                         attribute.m_Elements);
+        }
+        else
+        {
+            CopyToBuffer(buffer, position, &attribute.m_DataValue);
+        }
+    }
+
+    // back to attribute length
+    const uint32_t attributeLength =
+        static_cast<const uint32_t>(position - attributeLengthPosition);
+    size_t backPosition = attributeLengthPosition;
+    CopyToBuffer(buffer, backPosition, &attributeLengthPosition);
+
+    m_HeapBuffer.m_DataAbsolutePosition += position - attributeLengthPosition;
+}
+
+template <class T>
+void BP1Writer::WriteAttributeInIndex(const Attribute<T> &attribute,
+                                      const Stats<T> &stats) noexcept
+{
+    // TODO
+}
+
+template <class T>
 BP1Writer::Stats<typename TypeInfo<T>::ValueType>
 BP1Writer::GetStats(const Variable<T> &variable) const noexcept
 {
@@ -103,7 +196,7 @@ void BP1Writer::WriteVariableMetadataInData(
     WriteNameRecord(variable.m_Name, buffer, position);
     position += 2; // skip path
 
-    const uint8_t dataType = GetDataType<T>(); // dataType
+    const uint8_t dataType = GetDataType<T>();
     CopyToBuffer(buffer, position, &dataType);
 
     constexpr char no = 'n'; // isDimension
@@ -126,8 +219,8 @@ void BP1Writer::WriteVariableMetadataInData(
 
     // Back to varLength including payload size
     // not need to remove its own size (8) from length from bpdump
-    const uint64_t varLength =
-        position - varLengthPosition + variable.PayLoadSize();
+    const uint64_t varLength = static_cast<const uint64_t>(
+        position - varLengthPosition + variable.PayLoadSize());
 
     size_t backPosition = varLengthPosition;
     CopyToBuffer(buffer, backPosition, &varLength);

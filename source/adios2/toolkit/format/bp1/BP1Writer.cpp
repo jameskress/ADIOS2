@@ -14,6 +14,8 @@
 #include <string>
 #include <vector>
 
+#include "adios2/helper/adiosFunctions.h" //GetType<T>
+
 namespace adios2
 {
 namespace format
@@ -110,6 +112,66 @@ void BP1Writer::WriteProcessGroupIndex(
 
     ++m_MetadataSet.DataPGCount;
     m_MetadataSet.DataPGIsOpen = true;
+
+    if (m_Profiler.IsActive)
+    {
+        m_Profiler.Timers.at("buffering").Pause();
+    }
+}
+
+void BP1Writer::WriteAttributes(IO &io)
+{
+    if (m_Profiler.IsActive)
+    {
+        m_Profiler.Timers.at("buffering").Resume();
+    }
+
+    const auto attributesMap = io.GetAttributesMap();
+
+    auto &buffer = m_HeapBuffer.m_Data;
+    auto &position = m_HeapBuffer.m_DataPosition;
+
+    const uint32_t attributesCount =
+        static_cast<const uint32_t>(attributesMap.size());
+
+    CopyToBuffer(buffer, position, &attributesCount);
+
+    // will go back
+    const size_t attributesLengthPosition = position;
+    position += 8; // skip attributes length
+
+    uint32_t memberID = 0;
+
+    for (const auto &attributePair : attributesMap)
+    {
+        const std::string name(attributePair.first);
+        const std::string type(attributePair.second.first);
+
+        if (type == "unknown")
+        {
+        }
+#define declare_type(T)                                                        \
+    else if (type == GetType<T>)                                               \
+    {                                                                          \
+        Stats<T> stats;                                                        \
+        stats.Offset = m_HeapBuffer.m_DataAbsolutePosition;                    \
+        stats.MemberID = memberID;                                             \
+        Attribute<T> &attribute = io.GetAttribute<T>(name);                    \
+        WriteAttributeInData(attribute, stats);                                \
+        WriteAttributeInIndex(attribute, stats);                               \
+    }
+        ADIOS2_FOREACH_ATTRIBUTE_TYPE_1ARG(declare_type)
+#undef declare_type
+
+        ++memberID;
+    }
+
+    // complete attributes length
+    const uint64_t attributesLength =
+        static_cast<const uint64_t>(position - attributesLengthPosition);
+
+    size_t backPosition = attributesLengthPosition;
+    CopyToBuffer(buffer, backPosition, &attributesLength);
 
     if (m_Profiler.IsActive)
     {
