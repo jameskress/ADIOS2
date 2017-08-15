@@ -1,5 +1,6 @@
 program helloBPWriter
-    use adios2f
+
+    use adios2
 
     implicit none
 
@@ -7,5 +8,7 @@ program helloBPWriter
     real, dimension(:), allocatable :: myArray
 
     inx = 10
+
+    write(*,*) "Nx : ", inx
 
 end program helloBPWriter

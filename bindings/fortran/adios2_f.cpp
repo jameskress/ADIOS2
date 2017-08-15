@@ -7,6 +7,8 @@
 
 #include <stdexcept>
 
+#include <iostream>
+
 #ifdef ADIOS2_USE_MPI_F
 #include <mpi.h>
 #endif
@@ -18,7 +20,7 @@ extern "C" {
 #endif
 
 #ifdef ADIOS2_USE_MPI_F
-void adios2f_init_mpi(adios2_ADIOS *adios, int comm,
+void adios2_init_mpi_(adios2_ADIOS *adios, int comm,
                       const adios2_debug_mode debug_mode, int *ierr)
 {
     *ierr = 0;
@@ -32,7 +34,7 @@ void adios2f_init_mpi(adios2_ADIOS *adios, int comm,
     }
 }
 
-void adios2f_init_config_mpi(adios2_ADIOS *adios, const char *config_file,
+void adios2_init_config_mpi_(adios2_ADIOS *adios, const char *config_file,
                              int comm, const adios2_debug_mode debug_mode,
                              int *ierr)
 {
@@ -47,7 +49,7 @@ void adios2f_init_config_mpi(adios2_ADIOS *adios, const char *config_file,
     }
 }
 #else
-void adios2f_init_nompi(adios2_ADIOS *adios, const adios2_debug_mode debug_mode,
+void adios2_init_nompi_(adios2_ADIOS *adios, const adios2_debug_mode debug_mode,
                         int *ierr)
 {
     *ierr = 0;
@@ -61,7 +63,7 @@ void adios2f_init_nompi(adios2_ADIOS *adios, const adios2_debug_mode debug_mode,
     }
 }
 
-void adios2f_init_config_nompi(adios2_ADIOS *adios, const char *config_file,
+void adios2_init_config_nompi_(adios2_ADIOS *adios, const char *config_file,
                                const adios2_debug_mode debug_mode, int *ierr)
 {
     *ierr = 0;
@@ -76,7 +78,7 @@ void adios2f_init_config_nompi(adios2_ADIOS *adios, const char *config_file,
 }
 #endif
 
-void adios2f_declare_io(adios2_IO *io, adios2_ADIOS *adios, const char *io_name,
+void adios2_declare_io_(adios2_IO *io, adios2_ADIOS *adios, const char *io_name,
                         int *ierr)
 {
     *ierr = 0;
@@ -88,6 +90,8 @@ void adios2f_declare_io(adios2_IO *io, adios2_ADIOS *adios, const char *io_name,
     {
         *ierr = 1;
     }
+
+    std::cout << "Declaring IO: " << io_name << "\n";
 }
 
 #ifdef __cplusplus

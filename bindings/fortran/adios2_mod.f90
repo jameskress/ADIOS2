@@ -8,27 +8,29 @@
 !       Author: William F Godoy godoywf@ornl.gov
 !
 
-module adios2f
+module adios2
+
+    use adios2_params
+
     implicit none
 
     interface
 
-#include adios2_parameters.f90
+        subroutine adios2_init_mpi(adios, comm, debug_mode, ierr)
+            integer, intent(out) :: adios
+            integer, intent(in) :: comm
+            integer, intent(in) :: debug_mode
+            integer, intent(out) :: ierr
+        end
 
-        subroutine adios2_init_config_nompi(adios, config_file, debug_mode, &
-            ierr)
+        subroutine adios2_init_config_mpi(adios, config_file, comm,  &
+            debug_mode, ierr)
             integer, intent(out) :: adios
             character(*), intent(in) :: config_file
-            logical, intent(in) :: debug_mode
+            integer, intent(in) :: comm
+            integer, intent(in) :: debug_mode
             integer, intent(out) :: ierr
         end
-
-        subroutine adios2_init_nompi(adios, debug_mode, ierr)
-            integer, intent(out) :: adios
-            logical, intent(in) :: debug_mode
-            integer, intent(out) :: ierr
-        end
-
 
         subroutine adios2_declare_io(io, adios, io_name, ierr)
             integer, intent(out) :: io

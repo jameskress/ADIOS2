@@ -7,6 +7,8 @@
 !   Created on: Mar 13, 2017
 !       Author: William F Godoy godoywf@ornl.gov
 !
+module adios2_params
+    implicit none
 
     ! Debug mode
     integer, parameter :: adios2_debug_mode_on = 0
@@ -32,3 +34,5 @@
     integer, parameter :: adios2_open_mode_read = 2
     integer, parameter :: adios2_open_mode_append = 3
     integer, parameter :: adios2_open_mode_read_write = 4
+
+end module

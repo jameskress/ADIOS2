@@ -3,30 +3,30 @@
 # accompanying file Copyright.txt for details.
 #------------------------------------------------------------------------------#
 
-set(adios2f_targets)
+set(adios2_f_targets)
 
 if(ADIOS2_HAVE_MPI)
-  add_library(adios2f adios2f_mod.f90 adios2f.cpp)
+  add_library(adios2_f adios2_mod.f90 adios2_params_mod.f90 adios2_f.cpp)
 else()
-  add_library(adios2f adios2f_nompi_mod.f90 adios2f.cpp)
+  add_library(adios2_f adios2_nompi_mod.f90 adios2_params_mod.f90 adios2_f.cpp)
 endif()  
   
-target_link_libraries(adios2f PRIVATE adios2 adios2_c)
+target_link_libraries(adios2_f PRIVATE adios2 adios2_c)
 
 if(ADIOS2_HAVE_MPI)
   find_package(MPI COMPONENTS C REQUIRED)
   find_package(MPI COMPONENTS Fortran REQUIRED)
-  target_compile_definitions(adios2f PUBLIC ADIOS2_HAVE_MPI_F)
-  target_include_directories(adios2f PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${MPI_C_INCLUDE_PATH})
-  target_link_libraries(adios2f PRIVATE ${MPI_Fortran_LIBRARIES} ${MPI_C_LIBRARIES} )
+  target_compile_definitions(adios2_f PUBLIC ADIOS2_HAVE_MPI_F)
+  target_include_directories(adios2_f PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${MPI_C_INCLUDE_PATH} ${CMAKE_CURRENT_BINARY_DIR})
+  target_link_libraries(adios2_f PRIVATE ${MPI_C_LIBRARIES} ${MPI_Fortran_LIBRARIES})
 else()
-  target_include_directories(adios2f PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  target_include_directories(adios2_f PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-list(APPEND adios2f_targets adios2f)
+list(APPEND adios2_f_targets adios2_f)
 
 install(
-  TARGETS ${adios2f_targets} EXPORT adios2
+  TARGETS ${adios2_f_targets} EXPORT adios2
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
