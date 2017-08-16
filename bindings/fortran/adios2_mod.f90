@@ -17,7 +17,7 @@ module adios2
     interface
 
         subroutine adios2_init_mpi(adios, comm, debug_mode, ierr)
-            integer, intent(out) :: adios
+            integer(kind=8), intent(out) :: adios
             integer, intent(in) :: comm
             integer, intent(in) :: debug_mode
             integer, intent(out) :: ierr
@@ -25,17 +25,17 @@ module adios2
 
         subroutine adios2_init_config_mpi(adios, config_file, comm,  &
             debug_mode, ierr)
-            integer, intent(out) :: adios
-            character(*), intent(in) :: config_file
+            integer(kind=8), intent(out) :: adios
+            character*(*), intent(in) :: config_file
             integer, intent(in) :: comm
             integer, intent(in) :: debug_mode
             integer, intent(out) :: ierr
         end
 
         subroutine adios2_declare_io(io, adios, io_name, ierr)
-            integer, intent(out) :: io
-            integer, intent(in) :: adios
-            character(*), intent(in)  :: io_name
+            integer(kind=8), intent(out) :: io
+            integer(kind=8), intent(in) :: adios
+            character*(*), intent(in)  :: io_name
             integer, intent(out) :: ierr
         end
 

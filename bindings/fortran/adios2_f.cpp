@@ -5,15 +5,10 @@
  *      Author: William F Godoy
  */
 
-#include <stdexcept>
+#include "adios2_f.h"
 
 #include <iostream>
-
-#ifdef ADIOS2_USE_MPI_F
-#include <mpi.h>
-#endif
-
-#include <adios2_c.h>
+#include <stdexcept>
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,27 +44,28 @@ void adios2_init_config_mpi_(adios2_ADIOS *adios, const char *config_file,
     }
 }
 #else
-void adios2_init_nompi_(adios2_ADIOS *adios, const adios2_debug_mode debug_mode,
-                        int *ierr)
+void adios2_init_nompi_(adios2_ADIOS **adios, const int debug_mode, int *ierr)
 {
     *ierr = 0;
     try
     {
-        adios = adios2_init_nompi(debug_mode);
+        *adios = adios2_init_nompi(static_cast<adios2_debug_mode>(debug_mode));
     }
     catch (std::exception &e)
     {
         *ierr = 1;
     }
+    std::cout << "Created adios address " << adios << "\n";
 }
 
-void adios2_init_config_nompi_(adios2_ADIOS *adios, const char *config_file,
-                               const adios2_debug_mode debug_mode, int *ierr)
+void adios2_init_config_nompi_(adios2_ADIOS **adios, const char *config_file,
+                               const int debug_mode, int *ierr)
 {
     *ierr = 0;
     try
     {
-        adios = adios2_init_config_nompi(config_file, debug_mode);
+        *adios = adios2_init_config_nompi(
+            config_file, static_cast<adios2_debug_mode>(debug_mode));
     }
     catch (std::exception &e)
     {
@@ -78,13 +74,13 @@ void adios2_init_config_nompi_(adios2_ADIOS *adios, const char *config_file,
 }
 #endif
 
-void adios2_declare_io_(adios2_IO *io, adios2_ADIOS *adios, const char *io_name,
-                        int *ierr)
+void adios2_declare_io_(adios2_IO **io, adios2_ADIOS **adios,
+                        const char *io_name, int *ierr)
 {
     *ierr = 0;
     try
     {
-        io = adios2_declare_io(adios, io_name);
+        *io = adios2_declare_io(*adios, io_name);
     }
     catch (std::exception &e)
     {
