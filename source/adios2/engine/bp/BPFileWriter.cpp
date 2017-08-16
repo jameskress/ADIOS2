@@ -49,7 +49,9 @@ void BPFileWriter::Advance(const float /*timeout_sec*/)
 {
     m_BP1Writer.Advance();
 
+#ifdef ADIOS2_USE_VTKm
     m_VisVTKm.RenderAllVariables(m_IO);
+#endif
 }
 
 void BPFileWriter::Close(const int transportIndex)

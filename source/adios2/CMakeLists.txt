@@ -89,7 +89,7 @@ if(ADIOS2_HAVE_VTKm)
 #message(STATUS "path ${EGL_opengl_LIBRARY}")
   #include_directories(${VTKm_INCLUDE_DIRS})
   target_sources(adios2 PRIVATE toolkit/analytics/vis/VisVTKm.cpp)
-  target_link_libraries(adios2 PRIVATE vtkm)
+  target_link_libraries(adios2 PRIVATE ${VTKm_LIBRARIES})
 endif()
 
 if(ADIOS2_HAVE_MPI)

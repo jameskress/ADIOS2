@@ -60,7 +60,9 @@ void BPFileWriter::DoWriteCommon(Variable<T> &variable, const T *values)
     m_BP1Writer.WriteVariableMetadata(variable);
     m_BP1Writer.WriteVariablePayload(variable);
 
+#ifdef ADIOS2_USE_VTKm
     m_VisVTKm.SubscribeVariable(variable);
+#endif
 
     variable.m_AppValues = nullptr; // not needed after write
 }
