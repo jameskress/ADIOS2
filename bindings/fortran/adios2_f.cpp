@@ -14,9 +14,9 @@
 extern "C" {
 #endif
 
-#ifdef ADIOS2_USE_MPI_F
-void adios2_init_mpi_(adios2_ADIOS *adios, int comm,
-                      const adios2_debug_mode debug_mode, int *ierr)
+#ifdef ADIOS2_HAVE_MPI_F
+void adios2_init_(adios2_ADIOS *adios, int comm,
+                  const adios2_debug_mode debug_mode, int *ierr)
 {
     *ierr = 0;
     try
@@ -29,9 +29,8 @@ void adios2_init_mpi_(adios2_ADIOS *adios, int comm,
     }
 }
 
-void adios2_init_config_mpi_(adios2_ADIOS *adios, const char *config_file,
-                             int comm, const adios2_debug_mode debug_mode,
-                             int *ierr)
+void adios2_init_config_(adios2_ADIOS *adios, const char *config_file, int comm,
+                         const adios2_debug_mode debug_mode, int *ierr)
 {
     *ierr = 0;
     try

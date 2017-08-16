@@ -11,10 +11,9 @@ program helloBPWriter
     inx = 10
 
     call adios2_init_nompi(adios, 0, ierr)
+    call adios2_declare_io(io, adios, "myIO", ierr)
 
     write(*,*) "Nx : ", inx
     write(*,*) "ADIOS address :", adios
-
-    call adios2_declare_io(io, adios, "myIO", ierr)
 
 end program helloBPWriter
