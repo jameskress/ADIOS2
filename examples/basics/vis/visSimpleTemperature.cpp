@@ -25,15 +25,17 @@ int main(int argc, char *argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     /** Application variable */
-    std::vector<float> myTemperature = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    const std::size_t Nx = myTemperature.size();
+    static const std::size_t Nx=10, Ny=10, Nz=10;
+    std::vector<float> myTemperature(Nx*Ny*Nz);
+    for (int i = 0; i < 10*10*10; i++)
+        myTemperature[i] = i;
 
     try
     {
         /** ADIOS class factory of IO class objects, DebugON is recommended */
         adios2::ADIOS adios(MPI_COMM_WORLD, adios2::DebugON);
 
-        auto &visTransform = adios.GetTransform("Vis", {{"key", "value"}});
+        auto &visTransform = adios.GetTransform("Vis", {{"iso", "3.1"}});
 
         /*** IO class object: settings and factory of Settings: Variables,
          * Parameters, Transports, and Execution: Engines */
@@ -44,8 +46,8 @@ int main(int argc, char *argv[])
         /** global array : name, { shape (total) }, { start (local) }, { count
          * (local) }, all are constant dimensions */
         adios2::Variable<float> &bpTemperature =
-            bpIO.DefineVariable<float>("variableName", {size * Nx}, {rank * Nx},
-                                       {Nx}, adios2::ConstantDims);
+            bpIO.DefineVariable<float>("variableName", {size*Nx,Ny,Nz},{rank*Nx,0,0}, {Nx,Ny,Nz},
+                                        adios2::ConstantDims);
 
         bpTemperature.AddTransform(visTransform);
 

@@ -25,12 +25,15 @@ bool VisVTKm::RenderAllVariables()
     for (auto &visVariable : m_VisVariables)
     {
         auto &var = visVariable.VisVariable;
-        std::cout << var.m_Shape.size() << " : " << var.m_Shape[0] << std::endl;
+        std::cout<<"SHAPE: " << var.m_Shape.size() << " : " << var.m_Shape[0] << std::endl;
+        std::cout<<"START: " << var.m_Start.size() << " : " << var.m_Start[0] << std::endl;
+        std::cout<<"COUNT: " << var.m_Count.size() << " : " << var.m_Count[0] << std::endl;
 
         for (auto &transform : var.m_TransformsInfo)
         {
             // transform parameters
-            transform.Operator.m_Parameters;
+            for (auto &param : transform.Operator.m_Parameters)
+                std::cout<<param.first<<" "<<param.second<<std::endl;
 
             std::cout << __LINE__ << std::endl;
             for (auto &parameter : transform.Parameters)

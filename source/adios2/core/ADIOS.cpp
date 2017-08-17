@@ -141,7 +141,7 @@ Transform &ADIOS::GetTransform(const std::string transform,
     else if (transform == "vis" || transform == "Vis")
     {
         auto itPair = m_Transforms.emplace(
-            "vis", std::make_shared<adios2::transform::VisVTKm>(m_DebugMode));
+            "vis", std::make_shared<adios2::transform::VisVTKm>(parameters,m_DebugMode));
         return *itPair.first->second;
     }
     else
