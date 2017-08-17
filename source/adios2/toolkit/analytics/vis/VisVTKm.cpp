@@ -50,8 +50,6 @@ bool VisVTKm::RenderAllVariables()
         }
     }
 
-
-
     std::vector<float> field(10*10*10, -1);
 
     vtkm::Id3 dims(10,10,10);
@@ -62,7 +60,6 @@ bool VisVTKm::RenderAllVariables()
 
     ds.PrintSummary(std::cout);
     std::cout<<dims<<std::endl;
-
 
     return true;
 }

@@ -52,7 +52,6 @@ void BPFileWriter::DoWriteCommon(Variable<T> &variable, const T *values)
 
     // WRITE INDEX to data buffer and metadata structure (in memory)//
     m_BP1Writer.WriteVariableMetadata(variable);
-
 #ifdef ADIOS2_HAVE_VTKm
     // vis
     const size_t payloadPosition = m_BP1Writer.m_HeapBuffer.m_DataPosition;
