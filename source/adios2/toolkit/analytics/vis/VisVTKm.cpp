@@ -14,6 +14,7 @@
 #include <iostream>
 #include <vtkm/Math.h>
 #include <vtkm/cont/DataSetBuilderUniform.h>
+#include <vtkm/cont/DataSetFieldAdd.h>
 #include <vtkm/cont/DataSet.h>
 
 namespace adios2
@@ -40,16 +41,23 @@ bool VisVTKm::RenderAllVariables(IO &io)
                     std::cout<<"Meow"<<std::endl;
                     ///CAll VTKm magic
                 }
-                
             }
         }
     }
 
+
+
+    std::vector<float> field(10*10*10, -1);
+
     vtkm::Id3 dims(10,10,10);
     vtkm::cont::DataSetBuilderUniform dsb;
     vtkm::cont::DataSet ds = dsb.Create(dims);
+    vtkm::cont::DataSetFieldAdd dsf;
+    dsf.AddPointField(ds, "var", field);
+
     ds.PrintSummary(std::cout);
     std::cout<<dims<<std::endl;
+
 
     return true;
 }

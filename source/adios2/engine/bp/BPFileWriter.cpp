@@ -49,7 +49,7 @@ void BPFileWriter::Advance(const float /*timeout_sec*/)
 {
     m_BP1Writer.Advance();
 
-#ifdef ADIOS2_USE_VTKm
+#ifdef ADIOS2_HAVE_VTKm
     m_VisVTKm.RenderAllVariables(m_IO);
 #endif
 }
