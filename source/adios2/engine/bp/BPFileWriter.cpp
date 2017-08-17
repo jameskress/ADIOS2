@@ -48,7 +48,6 @@ ADIOS2_FOREACH_TYPE_1ARG(declare_type)
 void BPFileWriter::Advance(const float /*timeout_sec*/)
 {
     m_BP1Writer.Advance();
-
 #ifdef ADIOS2_HAVE_VTKm
     m_VisVTKm.RenderAllVariables(m_IO);
 #endif
